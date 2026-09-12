@@ -88,7 +88,8 @@ export function parsePythonTraceback(stderr: string, code: string): {
  */
 export async function executePythonCode(
   code: string,
-  timeoutMs: number = 4000
+  timeoutMs: number = 4000,
+  customInputs: string = ""
 ): Promise<ExecutionResult> {
   const startTime = Date.now();
   const tempDir = os.tmpdir();
@@ -97,20 +98,37 @@ export async function executePythonCode(
 
   let codeToExecute = code;
   if (code.includes("input(")) {
+    const userInputs = customInputs
+      ? customInputs.split(/[\n,]+/).map((s) => s.trim()).filter(Boolean)
+      : [];
+    const inputsJson = JSON.stringify(userInputs);
+
     const inputMockHeader = `import sys
 try:
-    _pydebug_inputs = ["Alex", "25", "Python", "100"]
+    _pydebug_user_inputs = ${inputsJson}
+    _pydebug_inputs = ["10", "20", "Alex", "100"]
     _pydebug_input_idx = 0
     def _mock_input(prompt=""):
         global _pydebug_input_idx
-        if prompt:
-            sys.stdout.write(str(prompt) + "\\n")
-            sys.stdout.flush()
-        if _pydebug_input_idx < len(_pydebug_inputs):
-            val = _pydebug_inputs[_pydebug_input_idx]
+        if _pydebug_input_idx < len(_pydebug_user_inputs):
+            val = _pydebug_user_inputs[_pydebug_input_idx]
             _pydebug_input_idx += 1
-            return val
-        return "Alex"
+        else:
+            p_lower = str(prompt).lower()
+            if any(k in p_lower for k in ["number", "num", "digit", "age", "count", "score", "amount", "val", "int", "size", "quantity", "year", "price"]):
+                val = "10"
+            elif _pydebug_input_idx - len(_pydebug_user_inputs) < len(_pydebug_inputs):
+                val = _pydebug_inputs[_pydebug_input_idx - len(_pydebug_user_inputs)]
+                _pydebug_input_idx += 1
+            else:
+                val = "10"
+        if prompt:
+            sys.stdout.write(str(prompt) + str(val) + "\\n")
+            sys.stdout.flush()
+        else:
+            sys.stdout.write(str(val) + "\\n")
+            sys.stdout.flush()
+        return val
     input = _mock_input
 except Exception:
     pass

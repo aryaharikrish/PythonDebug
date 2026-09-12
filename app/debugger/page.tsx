@@ -17,6 +17,7 @@ print(numbers[5])
 export default function DebuggerPage() {
   const { user } = useUser();
   const [code, setCode] = useState<string>(DEFAULT_CODE);
+  const [customInputs, setCustomInputs] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [hasExecuted, setHasExecuted] = useState<boolean>(false);
   const [executionResult, setExecutionResult] = useState<ExecutionResult | null>(null);
@@ -65,7 +66,7 @@ export default function DebuggerPage() {
       const response = await fetch("/api/execute", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code }),
+        body: JSON.stringify({ code, customInputs }),
       });
       const data = await response.json();
 
@@ -150,6 +151,8 @@ export default function DebuggerPage() {
             <CodeEditor
               code={code}
               onChange={setCode}
+              customInputs={customInputs}
+              onCustomInputsChange={setCustomInputs}
               onRun={handleRunCode}
               onDebug={handleDebugCode}
               onClear={handleClear}

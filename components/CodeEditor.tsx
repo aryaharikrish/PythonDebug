@@ -7,6 +7,8 @@ import { Play, Bug, Trash2, Sun, Moon, Sparkles, FileCode } from "lucide-react";
 interface CodeEditorProps {
   code: string;
   onChange: (value: string) => void;
+  customInputs?: string;
+  onCustomInputsChange?: (value: string) => void;
   onRun: () => void;
   onDebug: () => void;
   onClear: () => void;
@@ -63,6 +65,8 @@ print("Average score:", average)
 export function CodeEditor({
   code,
   onChange,
+  customInputs = "",
+  onCustomInputsChange,
   onRun,
   onDebug,
   onClear,
@@ -140,6 +144,20 @@ export function CodeEditor({
           </button>
         </div>
       </div>
+
+      {/* Optional Program Input (stdin) Bar */}
+      {onCustomInputsChange && (
+        <div className="flex items-center gap-2 px-4 py-2 bg-slate-950/80 border-b border-slate-800 text-xs">
+          <span className="font-medium text-slate-300 font-mono shrink-0">Input (stdin):</span>
+          <input
+            type="text"
+            value={customInputs}
+            onChange={(e) => onCustomInputsChange(e.target.value)}
+            placeholder="Enter custom input numbers or text here (e.g. 7 or 13)"
+            className="flex-1 bg-slate-900 border border-slate-700/80 rounded px-2.5 py-1 text-xs text-emerald-300 font-mono focus:outline-none focus:border-blue-500 placeholder:text-slate-600"
+          />
+        </div>
+      )}
 
       {/* Monaco Code Editor */}
       <div className="relative flex-1 min-h-[350px]">

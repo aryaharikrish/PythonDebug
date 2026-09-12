@@ -5,7 +5,7 @@ import { analyzePythonError } from "@/lib/aiDebugger";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { code } = body;
+    const { code, customInputs } = body;
 
     if (typeof code !== "string") {
       return NextResponse.json(
@@ -16,8 +16,12 @@ export async function POST(req: NextRequest) {
 
     console.log(`[PYDEBUG EXECUTION REQUEST] Received Python code (${code.length} chars)`);
 
-    // Execute Python code in isolated sandbox with 4.0s timeout
-    const executionResult = await executePythonCode(code, 4000);
+    // Execute Python code in isolated sandbox with 4.0s timeout and optional custom user inputs
+    const executionResult = await executePythonCode(
+      code,
+      4000,
+      typeof customInputs === "string" ? customInputs : ""
+    );
 
     // If an error occurred, run AI diagnostic analysis
     let debugAnalysis = null;
