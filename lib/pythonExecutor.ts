@@ -29,7 +29,11 @@ function getPythonCommand(): string {
 /**
  * Parses Python stderr traceback to extract Error Type, Line Number, and Error Message
  */
-export function parsePythonTraceback(stderr: string, code: string): {
+export function parsePythonTraceback(
+  stderr: string,
+  code: string,
+  headerLineCount: number = 0
+): {
   errorType: string;
   errorMessage: string;
   errorLine?: number;
@@ -42,12 +46,6 @@ export function parsePythonTraceback(stderr: string, code: string): {
   const lines = stderr.trim().split("\n");
   const codeLines = code.split("\n");
 
-  // Common syntax error format:
-  // File "temp.py", line 2
-  //   def foo()
-  //            ^
-  // SyntaxError: expected ':'
-
   let errorLine: number | undefined;
   let errorType = "RuntimeError";
   let errorMessage = stderr;
@@ -55,7 +53,7 @@ export function parsePythonTraceback(stderr: string, code: string): {
   // Find line number pattern e.g., File "...", line 5
   for (let i = lines.length - 1; i >= 0; i--) {
     const line = lines[i];
-    
+
     // Look for error header line like "IndexError: list index out of range"
     const errorMatch = line.match(/^([A-Z][a-zA-Z0-9_]*Error|[A-Z][a-zA-Z0-9_]*Exception):\s*(.*)$/);
     if (errorMatch) {
@@ -66,7 +64,8 @@ export function parsePythonTraceback(stderr: string, code: string): {
     // Look for line number
     const lineMatch = line.match(/File ".*?", line (\d+)/);
     if (lineMatch) {
-      errorLine = parseInt(lineMatch[1], 10);
+      const rawLine = parseInt(lineMatch[1], 10);
+      errorLine = rawLine > headerLineCount ? rawLine - headerLineCount : rawLine;
     }
   }
 
@@ -96,6 +95,7 @@ export async function executePythonCode(
   const filename = `pydebug_${Date.now()}_${Math.random().toString(36).substring(7)}.py`;
   const filePath = path.join(tempDir, filename);
 
+  let headerLineCount = 0;
   let codeToExecute = code;
   if (code.includes("input(")) {
     const userInputs = customInputs
@@ -134,6 +134,7 @@ except Exception:
     pass
 
 `;
+    headerLineCount = inputMockHeader.split("\n").length - 1;
     codeToExecute = inputMockHeader + code;
   }
 
@@ -210,7 +211,7 @@ except Exception:
 
       const hasTracebackOrError = /Traceback \(most recent call last\):|[A-Z][a-zA-Z0-9_]*(Error|Exception):/.test(stderrData);
       const hasError = codeExit !== 0 || hasTracebackOrError;
-      const parsedError = hasError ? parsePythonTraceback(stderrData, code) : { errorType: "None", errorMessage: "" };
+      const parsedError = hasError ? parsePythonTraceback(stderrData, code, headerLineCount) : { errorType: "None", errorMessage: "" };
 
       resolve({
         stdout: stdoutData,
