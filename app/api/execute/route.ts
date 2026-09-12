@@ -14,6 +14,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    console.log(`[PYDEBUG EXECUTION REQUEST] Received Python code (${code.length} chars)`);
+
     // Execute Python code in isolated sandbox with 4.0s timeout
     const executionResult = await executePythonCode(code, 4000);
 
@@ -22,6 +24,10 @@ export async function POST(req: NextRequest) {
     if (executionResult.hasError) {
       debugAnalysis = analyzePythonError(code, executionResult);
     }
+
+    console.log(
+      `[PYDEBUG RESULT] Success: ${!executionResult.hasError} | Execution Time: ${executionResult.executionTime}ms | Error: ${executionResult.errorType || "None"}`
+    );
 
     return NextResponse.json({
       success: true,
