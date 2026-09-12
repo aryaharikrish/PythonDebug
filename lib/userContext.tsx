@@ -18,11 +18,11 @@ interface UserContextType {
 }
 
 const defaultUser: UserProfile = {
-  userId: "user_demo_student_101",
-  name: "Alex Programmer",
-  email: "alex@pydebug.edu",
-  avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150",
-  isLoggedIn: true,
+  userId: "guest",
+  name: "Guest Student",
+  email: "guest@pydebug.edu",
+  avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Guest",
+  isLoggedIn: false,
 };
 
 const UserContext = createContext<UserContextType | undefined>(undefined);

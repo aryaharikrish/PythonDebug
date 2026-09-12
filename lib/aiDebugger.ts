@@ -19,7 +19,11 @@ export function analyzePythonError(
   code: string,
   executionResult: ExecutionResult
 ): AIDebugAnalysis {
-  const { errorType, errorMessage, errorLine, errorSnippet, traceback } = executionResult;
+  const errorType = executionResult.errorType || "";
+  const errorMessage = executionResult.errorMessage || "";
+  const errorLine = executionResult.errorLine;
+  const errorSnippet = executionResult.errorSnippet || "";
+  const traceback = executionResult.traceback || "";
   const lines = code.split("\n");
 
   // Fallback defaults if no specific error matched
@@ -31,7 +35,22 @@ export function analyzePythonError(
 
   // 1. SyntaxError & IndentationError
   if (errorType === "SyntaxError" || errorType === "IndentationError") {
-    if (errorMessage.includes("expected ':'") || (errorSnippet && !errorSnippet.endsWith(":"))) {
+    const CONTROL_KEYWORDS = ["if", "elif", "else", "for", "while", "def", "class", "try", "except", "finally", "with", "match", "case"];
+    const trimmedSnippet = errorSnippet.trim();
+    const isControlBlock = CONTROL_KEYWORDS.some(kw => trimmedSnippet.startsWith(kw + " ") || trimmedSnippet.startsWith(kw + ":"));
+
+    if (errorType === "IndentationError") {
+      simpleExplanation = "The code indentation (spacing) is inconsistent or missing.";
+      rootCause = "Python relies on 4 spaces to define code blocks inside functions, loops, and conditional statements.";
+      suggestedFix = "Indent all statements inside the block using 4 spaces.";
+      learningTip = "Never mix Tab characters and space characters for indentation in Python scripts.";
+      
+      if (errorLine && errorLine <= lines.length) {
+        const fixedLines = [...lines];
+        fixedLines[errorLine - 1] = "    " + fixedLines[errorLine - 1].trimStart();
+        correctedCode = fixedLines.join("\n");
+      }
+    } else if (isControlBlock && !trimmedSnippet.endsWith(":")) {
       simpleExplanation = "Python expected a colon (:) at the end of a block header statement.";
       rootCause = `The line '${errorSnippet || ""}' initiates a control structure (like if, for, while, or def) but is missing the trailing colon.`;
       suggestedFix = "Add a colon (:) at the end of the line.";
@@ -42,20 +61,63 @@ export function analyzePythonError(
         fixedLines[errorLine - 1] = fixedLines[errorLine - 1].trimEnd() + ":";
         correctedCode = fixedLines.join("\n");
       }
+    } else if (!isControlBlock && (trimmedSnippet.endsWith(":") || trimmedSnippet.includes(":"))) {
+      simpleExplanation = "There is an invalid trailing colon (:) or missing closing parenthesis in your statement.";
+      rootCause = `Statements like print() or variable assignments should not end with a colon (:). Colons are only used for block headers like 'if', 'for', and 'def'.`;
+      suggestedFix = "Remove the invalid colon (:) and close the parenthesis `)`.";
+      learningTip = "Never place colons (:) inside function arguments or at the end of print() statements.";
+      
+      if (errorLine && errorLine <= lines.length) {
+        const fixedLines = [...lines];
+        let lineToFix = fixedLines[errorLine - 1].trimEnd();
+        if (lineToFix.endsWith(":")) {
+          lineToFix = lineToFix.slice(0, -1).trimEnd();
+        }
+        // Balance parentheses
+        const openCount = (lineToFix.match(/\(/g) || []).length;
+        const closeCount = (lineToFix.match(/\)/g) || []).length;
+        if (openCount > closeCount) {
+          lineToFix += ")".repeat(openCount - closeCount);
+        }
+        fixedLines[errorLine - 1] = lineToFix;
+        correctedCode = fixedLines.join("\n");
+      }
     } else if (errorMessage.includes("unmatched") || errorMessage.includes("was never closed")) {
       simpleExplanation = "You have an unclosed bracket, parenthesis, or quote in your code.";
       rootCause = "Python reached the end of the line or file without finding the matching closing character `)`, `]`, `}`, `'`, or `\"`.";
       suggestedFix = "Ensure every opening parenthesis or bracket has a corresponding closing partner.";
       learningTip = "Check parenthesis balance in nested function calls like `print(len(items))`";
-    } else if (errorType === "IndentationError") {
-      simpleExplanation = "The code indentation (spacing) is inconsistent or missing.";
-      rootCause = "Python relies on 4 spaces to define code blocks inside functions, loops, and conditional statements.";
-      suggestedFix = "Indent all statements inside the block using 4 spaces.";
-      learningTip = "Never mix Tab characters and space characters for indentation in Python scripts.";
-      
+
       if (errorLine && errorLine <= lines.length) {
         const fixedLines = [...lines];
-        fixedLines[errorLine - 1] = "    " + fixedLines[errorLine - 1].trimStart();
+        let lineToFix = fixedLines[errorLine - 1];
+        const openCount = (lineToFix.match(/\(/g) || []).length;
+        const closeCount = (lineToFix.match(/\)/g) || []).length;
+        if (openCount > closeCount) {
+          lineToFix += ")".repeat(openCount - closeCount);
+        }
+        fixedLines[errorLine - 1] = lineToFix;
+        correctedCode = fixedLines.join("\n");
+      }
+    } else {
+      // General SyntaxError fallback repair
+      simpleExplanation = "SyntaxError: Your code contains invalid Python syntax.";
+      rootCause = `The statement '${errorSnippet || "on line " + errorLine}' violates Python grammar rules.`;
+      suggestedFix = "Check for stray characters, colons, or unclosed quotes/parentheses.";
+      learningTip = "Review Python syntax for function calls, variables, and strings.";
+
+      if (errorLine && errorLine <= lines.length) {
+        const fixedLines = [...lines];
+        let lineToFix = fixedLines[errorLine - 1].trimEnd();
+        if (lineToFix.endsWith(":")) {
+          lineToFix = lineToFix.slice(0, -1).trimEnd();
+        }
+        const openCount = (lineToFix.match(/\(/g) || []).length;
+        const closeCount = (lineToFix.match(/\)/g) || []).length;
+        if (openCount > closeCount) {
+          lineToFix += ")".repeat(openCount - closeCount);
+        }
+        fixedLines[errorLine - 1] = lineToFix;
         correctedCode = fixedLines.join("\n");
       }
     }
@@ -176,7 +238,21 @@ export function analyzePythonError(
     learningTip = "Lists use `.append()`, Sets use `.add()`, and Strings use `.replace()`. Know your data type methods!";
   }
 
-  // 9. TimeLimitExceededError
+  // 9. EOFError & input() handling
+  else if (errorType === "EOFError" || (errorType === "TimeLimitExceededError" && code.includes("input("))) {
+    simpleExplanation = "Your program paused while waiting for keyboard input from input().";
+    rootCause = "The Python input() function waits for user input from standard input (stdin) in an interactive terminal.";
+    suggestedFix = "Assign test variables directly (e.g., name = 'Alex') or rely on the automatic sandbox mock input.";
+    learningTip = "When running scripts in automated non-interactive environments, replace input() with test variable assignments.";
+    
+    if (errorSnippet && errorLine && errorLine <= lines.length) {
+      const fixedLines = [...lines];
+      fixedLines[errorLine - 1] = fixedLines[errorLine - 1].replace(/input\s*\(.*?\)/, '"Alex" # Test value');
+      correctedCode = fixedLines.join("\n");
+    }
+  }
+
+  // 10. TimeLimitExceededError
   else if (errorType === "TimeLimitExceededError") {
     simpleExplanation = "Your program ran for too long and was interrupted (likely an infinite loop).";
     rootCause = "A `while` loop condition never became False, or loop control variables were not incremented.";
