@@ -190,7 +190,8 @@ except Exception:
         });
       }
 
-      const hasError = codeExit !== 0 || stderrData.trim().length > 0;
+      const hasTracebackOrError = /Traceback \(most recent call last\):|[A-Z][a-zA-Z0-9_]*(Error|Exception):/.test(stderrData);
+      const hasError = codeExit !== 0 || hasTracebackOrError;
       const parsedError = hasError ? parsePythonTraceback(stderrData, code) : { errorType: "None", errorMessage: "" };
 
       resolve({

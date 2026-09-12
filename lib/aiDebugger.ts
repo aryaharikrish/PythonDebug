@@ -131,12 +131,22 @@ export function analyzePythonError(
     simpleExplanation = `The variable or function '${varName}' has not been defined before use.`;
     rootCause = `Python looked up '${varName}' in the current scope but couldn't find a definition for it.`;
     suggestedFix = `Check for spelling mistakes in '${varName}' or define '${varName}' earlier in your program.`;
-    learningTip = "Python variable names are case-sensitive! `myVariable` and `myvariable` are treated as two different variables.";
+    learningTip = "Python variable names and keywords are case-sensitive! (e.g. use True, False, None with capital letters).";
 
-    // Attempt smart typo correction (e.g. prnt -> print, or user_result -> result)
-    if (varName === "prnt" || varName === "prin" || varName === "prntt") {
+    // Attempt smart typo & Python keyword case corrections
+    if (varName === "true" || varName === "false" || varName === "none") {
+      const properCase = varName.charAt(0).toUpperCase() + varName.slice(1);
+      correctedCode = code.replace(new RegExp(`\\b${varName}\\b`, "g"), properCase);
+      suggestedFix = `Capitalize Python boolean/null keyword: replace '${varName}' with '${properCase}'.`;
+    } else if (varName === "null") {
+      correctedCode = code.replace(/\bnull\b/g, "None");
+      suggestedFix = "In Python, use 'None' instead of JavaScript 'null'.";
+    } else if (varName === "prnt" || varName === "prin" || varName === "prntt") {
       correctedCode = code.replace(new RegExp(`\\b${varName}\\b`, "g"), "print");
-      suggestedFix = "Fix the typo: replace 'prnt' with built-in function 'print'.";
+      suggestedFix = "Fix typo: replace 'prnt' with built-in function 'print'.";
+    } else if (varName === "lenn" || varName === "lengh") {
+      correctedCode = code.replace(new RegExp(`\\b${varName}\\b`, "g"), "len");
+      suggestedFix = "Fix typo: replace 'lenn' with built-in function 'len'.";
     } else if (errorSnippet && errorLine) {
       const fixedLines = [...lines];
       fixedLines[errorLine - 1] = `# Define ${varName} before accessing it\n${varName} = 0\n` + fixedLines[errorLine - 1];
