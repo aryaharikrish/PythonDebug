@@ -147,14 +147,17 @@ export function CodeEditor({
 
       {/* Optional Program Input (stdin) Bar */}
       {onCustomInputsChange && (
-        <div className="flex items-center gap-2 px-4 py-2 bg-slate-950/80 border-b border-slate-800 text-xs">
-          <span className="font-medium text-slate-300 font-mono shrink-0">Input (stdin):</span>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 px-4 py-2 bg-slate-950/80 border-b border-slate-800 text-xs">
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="font-medium text-slate-300 font-mono">Input (stdin):</span>
+            <span className="text-[10px] text-slate-500 font-sans">(For multiple inputs, separate with commas e.g. 10, 20)</span>
+          </div>
           <input
             type="text"
             value={customInputs}
             onChange={(e) => onCustomInputsChange(e.target.value)}
-            placeholder="Enter custom input numbers or text here (e.g. 7 or 13)"
-            className="flex-1 bg-slate-900 border border-slate-700/80 rounded px-2.5 py-1 text-xs text-emerald-300 font-mono focus:outline-none focus:border-blue-500 placeholder:text-slate-600"
+            placeholder="Enter values separated by commas (e.g. 10, 20 or Alex, 25)"
+            className="w-full sm:flex-1 bg-slate-900 border border-slate-700/80 rounded px-2.5 py-1 text-xs text-emerald-300 font-mono focus:outline-none focus:border-blue-500 placeholder:text-slate-600"
           />
         </div>
       )}

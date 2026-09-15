@@ -23,6 +23,24 @@ export default function DebuggerPage() {
   const [executionResult, setExecutionResult] = useState<ExecutionResult | null>(null);
   const [debugAnalysis, setDebugAnalysis] = useState<AIDebugAnalysis | null>(null);
   const [savedSessionNotice, setSavedSessionNotice] = useState<boolean>(false);
+  const [aiEnabled, setAiEnabled] = useState<boolean>(true);
+
+  // Load AI preference from local storage
+  React.useEffect(() => {
+    try {
+      const savedPref = localStorage.getItem("pydebug_ai_enabled");
+      if (savedPref !== null) {
+        setAiEnabled(savedPref === "true");
+      }
+    } catch (e) {}
+  }, []);
+
+  const handleToggleAi = (enabled: boolean) => {
+    setAiEnabled(enabled);
+    try {
+      localStorage.setItem("pydebug_ai_enabled", String(enabled));
+    } catch (e) {}
+  };
 
   // Helper to save session to local storage & Convex
   const saveSessionRecord = (res: ExecutionResult, analysis: AIDebugAnalysis | null) => {
@@ -72,8 +90,8 @@ export default function DebuggerPage() {
 
       if (data.success) {
         setExecutionResult(data.result);
-        setDebugAnalysis(data.debugAnalysis);
-        saveSessionRecord(data.result, data.debugAnalysis);
+        setDebugAnalysis(aiEnabled ? data.debugAnalysis : null);
+        saveSessionRecord(data.result, aiEnabled ? data.debugAnalysis : null);
       } else {
         setExecutionResult({
           stdout: "",
@@ -135,12 +153,26 @@ export default function DebuggerPage() {
           </p>
         </div>
 
-        {savedSessionNotice && (
-          <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-950/80 border border-emerald-800/60 rounded-lg text-emerald-300 text-xs font-medium animate-fadeIn">
-            <Check className="w-3.5 h-3.5" />
-            Session Saved to History
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => handleToggleAi(!aiEnabled)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 border transition-all ${
+              aiEnabled
+                ? "bg-blue-950/80 border-blue-700/60 text-blue-300 hover:bg-blue-900/60"
+                : "bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-white"
+            }`}
+          >
+            <Sparkles className={`w-3.5 h-3.5 ${aiEnabled ? "text-blue-400" : "text-slate-500"}`} />
+            {aiEnabled ? "AI Assistance: ON" : "AI Assistance: OFF"}
+          </button>
+
+          {savedSessionNotice && (
+            <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-950/80 border border-emerald-800/60 rounded-lg text-emerald-300 text-xs font-medium animate-fadeIn">
+              <Check className="w-3.5 h-3.5" />
+              Session Saved to History
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Main Split Grid: Editor (Left/Center) & Debug Panel (Right) */}
@@ -174,6 +206,8 @@ export default function DebuggerPage() {
             onApplyFix={handleApplyFix}
             isLoading={isLoading}
             hasExecuted={hasExecuted}
+            aiEnabled={aiEnabled}
+            onToggleAi={handleToggleAi}
           />
         </div>
       </div>
@@ -185,3 +219,4 @@ export default function DebuggerPage() {
     </div>
   );
 }
+
