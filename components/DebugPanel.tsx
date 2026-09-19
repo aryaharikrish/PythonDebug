@@ -23,7 +23,7 @@ export function DebugPanel({
 }: DebugPanelProps) {
   const [copied, setCopied] = useState(false);
   const [enabled, setEnabled] = useState(aiEnabled);
-  const [showCodeFix, setShowCodeFix] = useState(false);
+  const [showCodeFix, setShowCodeFix] = useState(true);
 
   useEffect(() => {
     setEnabled(aiEnabled);
